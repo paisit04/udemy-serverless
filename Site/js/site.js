@@ -5,11 +5,11 @@ var ChatApp = window.ChatApp || {};
 
   var lastChat = null;
 
-  var apiEndpoint = ChatApp.apiEndpoint;
+  var apiClient = apigClientFactory.newClient();
 
   ChatApp.populateChats = function () {
-    $.get(apiEndpoint + '/conversations').done(function (data) {
-      data.forEach(function (convo) {
+    apiClient.conversationsGet({}, null, {}).then(function (result) {
+      result.data.forEach(function (convo) {
         var otherUsers = [];
         convo.participants.forEach(function (user) {
           if (user !== currentUsername) {
@@ -37,15 +37,19 @@ var ChatApp = window.ChatApp || {};
   };
 
   ChatApp.loadChat = function () {
-    $.get(apiEndpoint + '/conversations/' + location.hash.substring(1)).done(
-      function (result) {
+    apiClient
+      .conversationsIdGet({ id: location.hash.substring(1) }, null, {})
+      .then(function (result) {
         var lastRendered = lastChat === null ? 0 : lastChat;
-        if ((lastChat === null && result.last) || lastChat < result.last) {
-          lastChat = result.last;
+        if (
+          (lastChat === null && result.data.last) ||
+          lastChat < result.data.last
+        ) {
+          lastChat = result.data.last;
         } else {
           return;
         }
-        result.messages.forEach(function (message) {
+        result.data.messages.forEach(function (message) {
           if (message.time > lastRendered) {
             var panel = $('<div class="panel">');
             if (message.sender === currentUsername) {
@@ -83,17 +87,19 @@ var ChatApp = window.ChatApp || {};
           }
         });
         window.scrollTo(0, document.body.scrollHeight);
-      }
-    );
+      });
   };
 
   ChatApp.send = function () {
-    $.post(
-      apiEndpoint + '/conversations/' + location.hash.substring(1),
-      $('#message').val()
-    ).done(function () {
-      $('#message').val('').focus();
-      ChatApp.loadChat();
-    });
+    apiClient
+      .conversationsIdPost(
+        { id: location.hash.substring(1) },
+        $('#message').val(),
+        {}
+      )
+      .then(function () {
+        $('#message').val('').focus();
+        ChatApp.loadChat();
+      });
   };
 })(jQuery);
